@@ -81,6 +81,13 @@ func decryptAndLoad(profile string, envMap map[string]string) (err error) {
 }
 
 func getProfile(filename string) string {
+	// read profile from env
+	envProfileNames := [5]string{"APP_ENV", "NODE_ENV"}
+	for _, envProfileName := range envProfileNames {
+		if envProfileValue := os.Getenv(envProfileName); envProfileValue != "" {
+			return envProfileValue
+		}
+	}
 	if strings.HasPrefix(filename, ".env.") {
 		return strings.TrimPrefix(filename, ".env.")
 	}
