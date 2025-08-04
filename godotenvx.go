@@ -52,15 +52,24 @@ func LoadReader(profile string, r io.Reader) (err error) {
 
 // decryptAndLoad decrypts the encrypted items in the envMap and inserts them into the environment variables.
 func decryptAndLoad(profile string, envMap map[string]string) (err error) {
-	privateKeyHex := FindPrivateKey(profile)
-	if privateKeyHex == "" {
-		return fmt.Errorf("private key not found")
-	}
-	for key, value := range envMap {
+	hasEncryptedItem := false
+	for _, value := range envMap {
 		if strings.HasPrefix(value, "encrypted:") {
-			envMap[key], err = DecryptDotenvxItem(privateKeyHex, value)
-			if err != nil {
-				return err
+			hasEncryptedItem = true
+			break
+		}
+	}
+	if hasEncryptedItem {
+		privateKeyHex := FindPrivateKey(profile)
+		if privateKeyHex == "" {
+			return fmt.Errorf("private key not found")
+		}
+		for key, value := range envMap {
+			if strings.HasPrefix(value, "encrypted:") {
+				envMap[key], err = DecryptDotenvxItem(privateKeyHex, value)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
