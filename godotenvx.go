@@ -2,9 +2,12 @@ package godotenvx
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	ecies "github.com/ecies/go/v2"
@@ -60,7 +63,20 @@ func decryptAndLoad(profile string, envMap map[string]string) (err error) {
 		}
 	}
 	if hasEncryptedItem {
-		privateKeyHex := FindPrivateKey(profile)
+		privateKeyHex := ""
+		publicKeyHex, exists := getPublicKey(envMap)
+		if exists {
+			keysStore, err := ReadGlobalKeyStore()
+			if err == nil {
+				keyPair, exits := keysStore[publicKeyHex]
+				if exits {
+					privateKeyHex = keyPair.PrivateKey
+				}
+			}
+		}
+		if privateKeyHex == "" {
+			privateKeyHex = FindPrivateKey(profile)
+		}
 		if privateKeyHex == "" {
 			return fmt.Errorf("private key not found")
 		}
@@ -78,6 +94,15 @@ func decryptAndLoad(profile string, envMap map[string]string) (err error) {
 		_ = os.Setenv(key, value)
 	}
 	return
+}
+
+func getPublicKey(envMap map[string]string) (string, bool) {
+	for key, value := range envMap {
+		if strings.HasPrefix(key, "DOTENV_PUBLIC_KEY") {
+			return value, true
+		}
+	}
+	return "", false
 }
 
 func getProfile(filename string) string {
@@ -159,4 +184,37 @@ func DecryptDotenvxItem(privateKeyHex string, encryptedText string) (string, err
 		return "", err
 	}
 	return string(plaintext), nil
+}
+
+// KeyPair represents the structure of each key entry
+type KeyPair struct {
+	PublicKey  string  `json:"public_key"`
+	PrivateKey string  `json:"private_key"`
+	Group      *string `json:"group"`
+	Name       *string `json:"name"`
+	Profile    string  `json:"profile"`
+	Comment    *string `json:"comment"`
+	Timestamp  *string `json:"timestamp"`
+}
+
+func ReadGlobalKeyStore() (map[string]KeyPair, error) {
+	// Get home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	// Construct the file path
+	filePath := filepath.Join(homeDir, ".dotenvx", ".env.keys.json")
+	// Read the JSON file
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	// Parse the JSON
+	var keyPairs map[string]KeyPair
+	err = json.Unmarshal(data, &keyPairs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+	return keyPairs, nil
 }
