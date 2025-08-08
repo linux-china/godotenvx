@@ -29,6 +29,14 @@ func TestLoadDotenvx(t *testing.T) {
 	log.Println(s3Bucket, secretKey)
 }
 
+func TestGetGlobalStore(t *testing.T) {
+	keyPairs, err := ReadGlobalKeyStore()
+	if err != nil {
+		panic(err)
+	}
+	log.Println(keyPairs)
+}
+
 func TestDecryptItem(t *testing.T) {
 	privateKeyHex := FindPrivateKey("")
 	encryptedText := "encrypted:BB01667tzu9aa7LFz8cUOQrDf/sU/PygTvTRD6DG5oNGlgfoXNEA5LvLuPPgcK2JCwiuweAenZNxJdBem7XuQFn1R7l9X0OtDl7SfPdXctfdZZI2QKxaCfWokalnNbCvhb+kXZxESHCnXU3FMQ=="
